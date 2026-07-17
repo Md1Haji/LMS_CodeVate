@@ -2,12 +2,10 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../../middleware/auth");
 const authorize = require("../../middleware/authorize");
-const ctrl = require("./tutor.controller");
 
+// All tutor routes require authentication and tutor role
 router.use(protect, authorize("tutor", "admin"));
 
-router.get("/courses", ctrl.getAssignedCourses);
-router.get("/courses/:id/submissions", ctrl.getPendingSubmissions);
-router.patch("/submissions/:id/feedback", ctrl.giveFeedback);
+// TODO: Implement tutor endpoints
 
 module.exports = router;
