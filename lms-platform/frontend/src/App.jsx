@@ -27,7 +27,11 @@ export default function App() {
       {/* Role-gated dashboards - each folder above is owned by a different team member */}
       <Route
         path="/admin"
-        element={<ProtectedRoute allowedRoles={["admin"]}><AdminLayout /></ProtectedRoute>}
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
       >
         <Route index element={<AdminOverview />} />
         <Route path="users" element={<AdminUsers />} />
@@ -35,9 +39,30 @@ export default function App() {
         <Route path="achievements" element={<AdminAchievements />} />
         <Route path="reviews" element={<AdminReviews />} />
       </Route>
-      <Route path="/instructor" element={<ProtectedRoute allowedRoles={["instructor", "admin"]}><InstructorDashboard /></ProtectedRoute>} />
-      <Route path="/tutor" element={<ProtectedRoute allowedRoles={["tutor", "admin"]}><TutorDashboard /></ProtectedRoute>} />
-      <Route path="/student" element={<ProtectedRoute allowedRoles={["student", "admin"]}><StudentDashboard /></ProtectedRoute>} />
+      <Route
+        path="/instructor"
+        element={
+          <ProtectedRoute allowedRoles={["instructor", "admin"]}>
+            <InstructorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tutor"
+        element={
+          <ProtectedRoute allowedRoles={["tutor", "admin"]}>
+            <TutorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student"
+        element={
+          <ProtectedRoute allowedRoles={["student", "admin"]}>
+            <StudentDashboard />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

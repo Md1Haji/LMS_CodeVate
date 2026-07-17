@@ -1,63 +1,123 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
-import Navbar from "../components/Navbar.jsx";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Card, Button, Input, Alert } from "../components/index";
 
-export default function Register() {
-  const { register } = useAuth();
+const Register = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const submit = async (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setBusy(true);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     try {
-      // Public sign-up always creates a student account.
-      // Instructor / tutor / admin accounts are provisioned from the admin dashboard.
-      await register(form.name, form.email, form.password);
+      setLoading(true);
+      await register(formData.name, formData.email, formData.password);
       navigate("/student");
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <Navbar />
-      <div className="container" style={{ maxWidth: 420, padding: "64px 24px" }}>
-        <div className="card">
-          <h1 style={{ fontSize: 24, marginBottom: 6 }}>Create your account</h1>
-          <p style={{ color: "var(--color-text-muted)", fontSize: 14, marginBottom: 24 }}>
-            Sign up as a student. Teaching accounts are set up by an admin.
-          </p>
-          <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>Full name</label>
-              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ marginTop: 6 }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>Email</label>
-              <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ marginTop: 6 }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>Password</label>
-              <input type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={{ marginTop: 6 }} />
-            </div>
-            {error && <div style={{ color: "var(--color-danger)", fontSize: 13 }}>{error}</div>}
-            <button className="btn btn-primary" disabled={busy} style={{ justifyContent: "center", marginTop: 6 }}>
-              {busy ? "Creating account…" : "Create account"}
-            </button>
-          </form>
-          <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 18, textAlign: "center" }}>
-            Already have an account? <Link to="/login">Log in</Link>
+    <div className="min-h-screen flex-center bg-gradient-premium">
+      <Card variant="premium" className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">LearnSphere</h1>
+          <p className="text-slate-600 mt-2">Create your account</p>
+        </div>
+
+        {error && (
+          <Alert variant="error" className="mb-6">
+            {error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Full Name"
+            name="name"
+            placeholder="John Doe"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+          <Input
+            label="Email Address"
+            type="email"
+            name="email"
+            placeholder="your@email.com"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <Input
+            label="Password"
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            name="confirmPassword"
+            placeholder="••••••••"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            required
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            isLoading={loading}
+            className="w-full"
+          >
+            {loading ? "Creating account..." : "Create Account"}
+          </Button>
+        </form>
+
+        <div className="mt-6 pt-6 border-t border-slate-200 text-center">
+          <p className="text-slate-600">
+            Already have an account?{" "}
+            <a
+              href="/login"
+              className="text-primary-600 font-semibold hover:text-primary-700"
+            >
+              Sign in
+            </a>
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
-}
+};
+
+export default Register;

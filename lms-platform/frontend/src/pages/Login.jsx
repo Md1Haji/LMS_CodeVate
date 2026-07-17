@@ -1,61 +1,114 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
-import Navbar from "../components/Navbar.jsx";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Card, Button, Input, Alert, Spinner } from "../components/index";
+import { authAPI } from "../services/api";
 
-const dashboardPath = { admin: "/admin", instructor: "/instructor", tutor: "/tutor", student: "/student" };
-
-export default function Login() {
-  const { login } = useAuth();
+const Login = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { login, isAuthenticated } = useAuth();
+  const [email, setEmail] = useState("student@lms.local");
+  const [password, setPassword] = useState("Password123!");
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false);
 
-  const submit = async (e) => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/student");
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setBusy(true);
     try {
-      const user = await login(form.email, form.password);
-      navigate(dashboardPath[user.role] || "/");
+      setLoading(true);
+      setError("");
+      const response = await login(email, password);
+      
+      // Route based on role
+      const role = response.user.role;
+      if (role === "admin") {
+        navigate("/admin");
+      } else if (role === "instructor") {
+        navigate("/instructor");
+      } else if (role === "tutor") {
+        navigate("/tutor");
+      } else {
+        navigate("/student");
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <Navbar />
-      <div className="container" style={{ maxWidth: 420, padding: "64px 24px" }}>
-        <div className="card">
-          <h1 style={{ fontSize: 24, marginBottom: 6 }}>Welcome back</h1>
-          <p style={{ color: "var(--color-text-muted)", fontSize: 14, marginBottom: 24 }}>
-            One login for every role — we'll route you to the right dashboard.
-          </p>
-          <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>Email</label>
-              <input type="email" required value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ marginTop: 6 }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>Password</label>
-              <input type="password" required value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })} style={{ marginTop: 6 }} />
-            </div>
-            {error && <div style={{ color: "var(--color-danger)", fontSize: 13 }}>{error}</div>}
-            <button className="btn btn-primary" disabled={busy} style={{ justifyContent: "center", marginTop: 6 }}>
-              {busy ? "Signing in…" : "Log in"}
-            </button>
-          </form>
-          <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 18, textAlign: "center" }}>
-            New here? <Link to="/register">Create an account</Link>
+    <div className="min-h-screen flex-center bg-gradient-premium">
+      <Card variant="premium" className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">LearnSphere</h1>
+          <p className="text-slate-600 mt-2">Sign in to your account</p>
+        </div>
+
+        {error && (
+          <Alert variant="error" className="mb-6">
+            {error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Email Address"
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            isLoading={loading}
+            className="w-full"
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </Button>
+        </form>
+
+        <div className="mt-6 pt-6 border-t border-slate-200 text-center">
+          <p className="text-slate-600">
+            Don't have an account?{" "}
+            <a
+              href="/register"
+              className="text-primary-600 font-semibold hover:text-primary-700"
+            >
+              Sign up
+            </a>
           </p>
         </div>
-      </div>
+
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <p className="text-xs text-slate-500 mb-3">Demo Accounts:</p>
+          <div className="space-y-2 text-xs text-slate-600">
+            <p>👤 Admin: admin@lms.local / Password123!</p>
+            <p>👨‍🏫 Instructor: instructor@lms.local / Password123!</p>
+            <p>👨‍🏫 Tutor: tutor@lms.local / Password123!</p>
+            <p>👨‍🎓 Student: student@lms.local / Password123!</p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
-}
+};
+
+export default Login;
