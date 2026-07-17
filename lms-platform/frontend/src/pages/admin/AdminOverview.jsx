@@ -1,82 +1,136 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import api from "../../services/api";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { adminAPI } from "../services/api";
+import { Card, Spinner, Alert } from "./index";
 
-// GET /admin/dashboard - platform-wide KPIs + recent signups.
-// Owned by: Team member 1 (admin dashboard + auth/authorization)
-export default function AdminOverview() {
+const AdminOverview = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    api
-      .get("/admin/dashboard")
-      .then(({ data }) => setStats(data))
-      .catch((err) => setError(err.response?.data?.message || "Could not load dashboard stats"));
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await adminAPI.getDashboardStats();
+        setStats(response.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to load dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
-  if (error) return <div className="card" style={{ color: "var(--color-danger)" }}>{error}</div>;
-  if (!stats) return <div>Loading…</div>;
+  if (loading) {
+    return (
+      <div className="flex-center min-h-screen">
+        <Spinner />
+      </div>
+    );
+  }
 
-  const kpis = [
-    ["Students", stats.totalStudents],
-    ["Instructors", stats.totalInstructors],
-    ["Tutors", stats.totalTutors],
-    ["Total courses", stats.totalCourses],
-    ["Published courses", stats.publishedCourses],
-    ["Draft courses", stats.draftCourses],
-    ["Total enrollments", stats.totalEnrollments],
-    ["Active enrollments", stats.activeEnrollments],
-  ];
+  if (error) {
+    return (
+      <div className="p-6">
+        <Alert variant="error" title="Error">
+          {error}
+        </Alert>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 style={{ fontSize: 26 }}>Overview</h1>
-      <p style={{ color: "var(--color-text-muted)", marginTop: 4 }}>
-        Platform-wide activity at a glance.
-      </p>
-
-      <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-        {kpis.map(([label, value]) => (
-          <div key={label} className="card">
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)" }}>{value}</div>
-            <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>{label}</div>
-          </div>
-        ))}
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-4xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-slate-600 mt-2">Welcome back, {user?.name}!</p>
       </div>
 
-      <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-        <div className="card">
-          <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>Estimated revenue</div>
-          <div style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 6 }}>
-            ${Number(stats.estimatedRevenue || 0).toLocaleString()}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card variant="premium">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-600">
+              {stats?.totalStudents || 0}
+            </div>
+            <p className="text-slate-600 mt-2">Total Students</p>
           </div>
-          <div style={{ color: "var(--color-text-muted)", fontSize: 12, marginTop: 6 }}>
-            Sum of course price across all enrollments (all-time).
-          </div>
-        </div>
+        </Card>
 
-        <div className="card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h2 style={{ fontSize: 15 }}>Recent signups</h2>
-            <Link to="/admin/users" style={{ fontSize: 13 }}>View all users →</Link>
+        <Card variant="premium">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-600">
+              {stats?.totalInstructors || 0}
+            </div>
+            <p className="text-slate-600 mt-2">Instructors</p>
           </div>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            {stats.recentUsers?.length === 0 && (
-              <div style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No signups yet.</div>
-            )}
-            {stats.recentUsers?.map((u) => (
-              <div key={u._id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+        </Card>
+
+        <Card variant="premium">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-600">
+              {stats?.publishedCourses || 0}
+            </div>
+            <p className="text-slate-600 mt-2">Published Courses</p>
+          </div>
+        </Card>
+
+        <Card variant="premium">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-success-600">
+              ${stats?.estimatedRevenue || 0}
+            </div>
+            <p className="text-slate-600 mt-2">Revenue</p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <h3 className="text-xl font-semibold text-slate-900 mb-4">Platform Overview</h3>
+          <div className="space-y-3">
+            <div className="flex-between">
+              <span className="text-slate-700">Total Courses</span>
+              <span className="font-semibold text-slate-900">{stats?.totalCourses}</span>
+            </div>
+            <div className="flex-between">
+              <span className="text-slate-700">Draft Courses</span>
+              <span className="font-semibold text-slate-900">{stats?.draftCourses}</span>
+            </div>
+            <div className="flex-between">
+              <span className="text-slate-700">Total Enrollments</span>
+              <span className="font-semibold text-slate-900">{stats?.totalEnrollments}</span>
+            </div>
+            <div className="flex-between">
+              <span className="text-slate-700">Active Enrollments</span>
+              <span className="font-semibold text-slate-900">{stats?.activeEnrollments}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="text-xl font-semibold text-slate-900 mb-4">Recent Users</h3>
+          <div className="space-y-3">
+            {stats?.recentUsers?.map((u) => (
+              <div key={u._id} className="flex-between pb-3 border-b border-slate-200 last:border-0">
                 <div>
-                  <div style={{ fontWeight: 600 }}>{u.name}</div>
-                  <div style={{ color: "var(--color-text-muted)" }}>{u.email}</div>
+                  <p className="font-medium text-slate-900">{u.name}</p>
+                  <p className="text-sm text-slate-500">{u.email}</p>
                 </div>
-                <span className="pill">{u.role}</span>
+                <span className="badge badge-slate text-xs">{u.role}</span>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default AdminOverview;

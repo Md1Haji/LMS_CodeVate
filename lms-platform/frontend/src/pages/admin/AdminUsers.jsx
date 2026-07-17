@@ -1,147 +1,176 @@
-import React, { useEffect, useState } from "react";
-import api from "../../services/api";
+import React, { useState, useEffect } from "react";
+import { adminAPI } from "../../services/api";
+import { Card, Button, Input, Spinner, Alert, EmptyState, Badge } from "../../components/index";
 
-const ROLES = ["admin", "instructor", "tutor", "student"];
-
-// Owned by: Team member 1 (admin dashboard + auth/authorization)
-export default function AdminUsers() {
+const AdminUsers = () => {
   const [users, setUsers] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [roleFilter, setRoleFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "instructor" });
-  const [error, setError] = useState("");
-  const [formError, setFormError] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [total, setTotal] = useState(0);
+  const limit = 10;
 
-  const loadUsers = async () => {
+  useEffect(() => {
+    fetchUsers();
+  }, [page, search, roleFilter]);
+
+  const fetchUsers = async () => {
     try {
-      const params = {};
-      if (roleFilter) params.role = roleFilter;
-      if (search) params.search = search;
-      const { data } = await api.get("/admin/users", { params });
-      setUsers(data.users);
-      setTotal(data.total);
+      setLoading(true);
+      setError(null);
+      const response = await adminAPI.listUsers(roleFilter, search, page, limit);
+      setUsers(response.data.users);
+      setTotal(response.data.total);
     } catch (err) {
-      setError(err.response?.data?.message || "Could not load users");
+      setError(err.response?.data?.message || "Failed to load users");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => { loadUsers(); }, [roleFilter, search]);
-
-  const createUser = async (e) => {
-    e.preventDefault();
-    setFormError("");
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("Are you sure?")) return;
     try {
-      await api.post("/admin/users", form);
-      setForm({ name: "", email: "", password: "", role: "instructor" });
-      loadUsers();
+      await adminAPI.deleteUser(id);
+      setUsers(users.filter((u) => u._id !== id));
     } catch (err) {
-      setFormError(err.response?.data?.message || "Could not create user");
+      setError(err.response?.data?.message || "Failed to delete user");
     }
   };
 
-  const changeRole = async (id, role) => {
-    await api.patch(`/admin/users/${id}`, { role });
-    loadUsers();
-  };
-
-  const toggleActive = async (u) => {
-    await api.patch(`/admin/users/${u._id}`, { isActive: !u.isActive });
-    loadUsers();
-  };
-
-  const removeUser = async (id) => {
-    if (!window.confirm("Permanently delete this user?")) return;
-    await api.delete(`/admin/users/${id}`);
-    loadUsers();
-  };
+  if (loading && users.length === 0) {
+    return (
+      <div className="flex-center min-h-screen">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 style={{ fontSize: 26 }}>Users</h1>
-      <p style={{ color: "var(--color-text-muted)", marginTop: 4 }}>{total} total accounts.</p>
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-4xl font-bold text-slate-900">Users Management</h1>
+        <p className="text-slate-600 mt-2">Manage platform users and roles</p>
+      </div>
 
-      <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr 320px", gap: 24, alignItems: "start" }}>
-        <div className="card">
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            <input
-              placeholder="Search name or email…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ maxWidth: 160 }}>
-              <option value="">All roles</option>
-              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+      {error && (
+        <Alert variant="error" title="Error">
+          {error}
+        </Alert>
+      )}
+
+      {/* Filters */}
+      <Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setPage(1);
+            }}
+            className="input"
+          >
+            <option value="">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="instructor">Instructor</option>
+            <option value="tutor">Tutor</option>
+            <option value="student">Student</option>
+          </select>
+          <Button variant="primary" size="md" onClick={fetchUsers}>
+            Search
+          </Button>
+        </div>
+      </Card>
+
+      {/* Users Table */}
+      {users.length === 0 ? (
+        <EmptyState
+          icon="👤"
+          title="No users found"
+          description="Try adjusting your filters"
+        />
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Name</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Email</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Role</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
+                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user._id} className="border-b border-slate-200 hover:bg-slate-50">
+                    <td className="py-3 px-4">{user.name}</td>
+                    <td className="py-3 px-4">{user.email}</td>
+                    <td className="py-3 px-4">
+                      <Badge variant="primary">{user.role}</Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge
+                        variant={user.isActive ? "success" : "warning"}
+                      >
+                        {user.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user._id)}
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {error && <div style={{ color: "var(--color-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
-
-          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "var(--color-text-muted)" }}>
-                <th style={{ padding: "8px 0" }}>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u._id} style={{ borderTop: "1px solid var(--color-border)" }}>
-                  <td style={{ padding: "8px 0" }}>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>
-                    <select
-                      value={u.role}
-                      onChange={(e) => changeRole(u._id, e.target.value)}
-                      style={{ fontSize: 12, padding: "4px 6px" }}
-                    >
-                      {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-outline"
-                      style={{ padding: "4px 10px", fontSize: 12 }}
-                      onClick={() => toggleActive(u)}
-                    >
-                      {u.isActive ? "Active" : "Deactivated"}
-                    </button>
-                  </td>
-                  <td>
-                    <button
-                      className="btn"
-                      style={{ padding: "4px 10px", fontSize: 12, color: "var(--color-danger)" }}
-                      onClick={() => removeUser(u._id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: "16px 0", color: "var(--color-text-muted)" }}>No users match this filter.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card">
-          <h2 style={{ fontSize: 17, marginBottom: 14 }}>Provision an account</h2>
-          <form onSubmit={createUser} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input placeholder="Full name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <input placeholder="Email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <input placeholder="Temporary password" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            {formError && <div style={{ color: "var(--color-danger)", fontSize: 13 }}>{formError}</div>}
-            <button className="btn btn-primary" style={{ justifyContent: "center" }}>Create account</button>
-          </form>
-        </div>
-      </div>
+          {/* Pagination */}
+          <div className="flex-between mt-6 pt-6 border-t border-slate-200">
+            <p className="text-slate-600">
+              Showing {users.length} of {total} users
+            </p>
+            <div className="space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage(Math.max(1, page - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-slate-600">Page {page}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page * limit >= total}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
-}
+};
+
+export default AdminUsers;

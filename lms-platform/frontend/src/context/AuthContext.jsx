@@ -1,49 +1,109 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import api from "../services/api";
+import React, { createContext, useState, useEffect } from "react";
+import { authAPI } from "../services/api";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const loadMe = useCallback(async () => {
+  // ===== Check Auth on Mount =====
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await authAPI.getMe();
+        setUser(response.data.user);
+        setIsAuthenticated(true);
+      } catch (err) {
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // ===== Register =====
+  const register = async (name, email, password) => {
     try {
-      const { data } = await api.get("/auth/me");
-      setUser(data.user);
-    } catch {
-      setUser(null);
+      setLoading(true);
+      setError(null);
+      const response = await authAPI.register(name, email, password);
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      return response.data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Registration failed";
+      setError(message);
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    loadMe();
-  }, [loadMe]);
-
+  // ===== Login =====
   const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
-    setUser(data.user);
-    return data.user;
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await authAPI.login(email, password);
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      return response.data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Login failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const register = async (name, email, password) => {
-    const { data } = await api.post("/auth/register", { name, email, password });
-    setUser(data.user);
-    return data.user;
-  };
-
+  // ===== Logout =====
   const logout = async () => {
-    await api.post("/auth/logout");
-    setUser(null);
+    try {
+      setLoading(true);
+      await authAPI.logout();
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  // ===== Check if user has role =====
+  const hasRole = (role) => {
+    if (typeof role === "string") {
+      return user?.role === role;
+    }
+    return role.includes(user?.role);
+  };
 
-export const useAuth = () => useContext(AuthContext);
+  const value = {
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    register,
+    login,
+    logout,
+    hasRole,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// ===== Custom Hook =====
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};

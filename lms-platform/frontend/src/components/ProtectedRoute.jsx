@@ -1,16 +1,28 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext";
+import { Spinner } from "./index";
 
-// Wraps role-specific dashboards. `allowedRoles` mirrors the backend's authorize() middleware
-// so a student can never even render the admin/tutor/instructor UI.
-export default function ProtectedRoute({ children, allowedRoles }) {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, loading, isAuthenticated } = useAuth();
 
-  if (loading) return <div className="container" style={{ padding: 60 }}>Loading…</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (loading) {
+    return (
+      <div className="flex-center min-h-screen bg-slate-50">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
   }
+
   return children;
-}
+};
+
+export default ProtectedRoute;

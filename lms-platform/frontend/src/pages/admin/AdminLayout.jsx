@@ -1,56 +1,88 @@
 import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
-import Navbar from "../../components/Navbar.jsx";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { Outlet } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { Button } from "../../components/index";
+import { useNavigate } from "react-router-dom";
 
-const NAV_ITEMS = [
-  { to: "/admin", label: "Overview", end: true },
-  { to: "/admin/users", label: "Users" },
-  { to: "/admin/courses", label: "Courses" },
-  { to: "/admin/achievements", label: "Achievements" },
-  { to: "/admin/reviews", label: "Reviews" },
-];
+const AdminLayout = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
-// Shared shell for every admin page: top navbar + left sidebar + content outlet.
-// Owned by: Team member 1 (admin dashboard + auth/authorization)
-export default function AdminLayout() {
-  const { user } = useAuth();
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const menuItems = [
+    { label: "Overview", path: "/admin", icon: "📊" },
+    { label: "Users", path: "/admin/users", icon: "👥" },
+    { label: "Courses", path: "/admin/courses", icon: "📚" },
+    { label: "Achievements", path: "/admin/achievements", icon: "🏆" },
+    { label: "Reviews", path: "/admin/reviews", icon: "⭐" },
+  ];
 
   return (
-    <div>
-      <Navbar />
-      <div className="container" style={{ padding: "32px 24px 64px", display: "flex", gap: 28 }}>
-        <aside style={{ width: 200, flexShrink: 0 }}>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Signed in as</div>
-            <div style={{ fontWeight: 700 }}>{user?.name}</div>
-            <span className="pill" style={{ marginTop: 6, display: "inline-block" }}>admin</span>
-          </div>
-          <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                style={({ isActive }) => ({
-                  padding: "10px 14px",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: isActive ? "var(--color-primary-dark)" : "var(--color-text-muted)",
-                  background: isActive ? "var(--color-primary-soft)" : "transparent",
-                })}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
+    <div className="flex h-screen bg-slate-50">
+      {/* Sidebar */}
+      <div
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-white border-r border-slate-200 transition-all duration-300 flex flex-col`}
+      >
+        {/* Logo */}
+        <div className="p-6 border-b border-slate-200">
+          <div className="text-2xl font-bold text-primary-600">LearnSphere</div>
+        </div>
 
-        <main style={{ flex: 1, minWidth: 0 }}>
+        {/* Menu Items */}
+        <nav className="flex-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <a
+              key={item.path}
+              href={item.path}
+              className="flex items-center px-6 py-4 text-slate-700 hover:bg-slate-50 hover:text-primary-600 transition-colors border-l-4 border-transparent hover:border-primary-600"
+            >
+              <span className="text-xl">{item.icon}</span>
+              {sidebarOpen && <span className="ml-4">{item.label}</span>}
+            </a>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-200">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full"
+          >
+            {sidebarOpen ? "Logout" : "🚪"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex-between">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="btn btn-ghost"
+          >
+            {sidebarOpen ? "←" : "→"}
+          </button>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <div className="w-10" />
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
     </div>
   );
-}
+};
+
+export default AdminLayout;
