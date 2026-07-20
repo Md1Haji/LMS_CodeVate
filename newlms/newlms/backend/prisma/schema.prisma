@@ -1,0 +1,183 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+type PdfFile {
+  name String
+  size String
+  url  String?
+}
+
+type PptFile {
+  name String
+  size String
+  url  String?
+}
+
+type DocFile {
+  name String
+  size String
+  url  String?
+}
+
+type ZipFile {
+  name String
+  size String
+  url  String?
+}
+
+type Resource {
+  id          String
+  title       String
+  url         String
+  type        String
+  description String?
+}
+
+type Lesson {
+  id            String
+  title         String
+  videoUrl      String?
+  videoType     String?
+  videoDuration String?
+  description   String?
+  pdfFile       PdfFile?
+  pptFile       PptFile?
+  docFile       DocFile?
+  zipFile       ZipFile?
+  resources     Resource[]
+}
+
+type Module {
+  id      String
+  title   String
+  lessons Lesson[]
+}
+
+model Course {
+  id          String   @id @default(uuid()) @map("_id")
+  title       String?
+  description String?
+  category    String?
+  coverImage  String?
+  instructor  String?
+  duration    String?
+  level       String?
+  language    String?
+  status      String?  @default("Draft")
+  createdAt   DateTime? @default(now())
+  curriculum  Module[]
+}
+
+type ThreadItem {
+  sender String
+  text   String
+  time   String
+}
+
+model Message {
+  id        String       @id @default(uuid()) @map("_id")
+  sender    String
+  recipient String?
+  subject   String
+  preview   String
+  date      String
+  unread    Boolean      @default(true)
+  folder    String       @default("Inbox")
+  thread    ThreadItem[]
+}
+
+model Activity {
+  id       String  @id @default(uuid()) @map("_id")
+  type     String
+  text     String
+  time     String
+  courseId String?
+}
+
+model Review {
+  id          String  @id @default(uuid()) @map("_id")
+  courseId    String
+  courseTitle String
+  studentName String
+  rating      Int
+  comment     String
+  date        String
+  reply       String  @default("")
+}
+
+model Announcement {
+  id          String   @id @default(uuid()) @map("_id")
+  title       String
+  content     String
+  target      String
+  courseId    String?
+  courseTitle String?
+  date        String
+  files       String[]
+}
+
+model CalendarEvent {
+  id    String @id @default(uuid()) @map("_id")
+  title String
+  date  String
+  type  String
+  time  String
+}
+
+type QuestionOption {
+  id   String
+  text String
+}
+
+type VoiceQuestion {
+  id            String
+  text          String
+  options       String[]
+  correctAnswer String
+  marks         Int      @default(1)
+}
+
+model VoiceAssignment {
+  id          String          @id @default(uuid()) @map("_id")
+  title       String
+  description String?
+  status      String?         @default("Published")
+  tutorId     String?         @default("tutor-1")
+  tutorName   String?         @default("Tutor Manoj")
+  duration    Int?            @default(15)
+  totalMarks  Int             @default(0)
+  createdAt   DateTime        @default(now())
+  questions   VoiceQuestion[]
+}
+
+type StudentAnswerItem {
+  questionId     String
+  questionText   String
+  selectedAnswer String
+  correctAnswer  String
+  isCorrect      Boolean
+  marksObtained  Int
+  totalMarks     Int
+}
+
+model VoiceAssignmentSubmission {
+  id              String              @id @default(uuid()) @map("_id")
+  assignmentId    String
+  assignmentTitle String
+  studentId       String              @default("student-1")
+  studentName     String              @default("Manoj")
+  tutorId         String?             @default("tutor-1")
+  studentAnswers  StudentAnswerItem[]
+  finalScore      Int
+  totalMarks      Int
+  percentage      Float
+  submittedAt     DateTime            @default(now())
+  status          String              @default("Completed")
+}
+
